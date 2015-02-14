@@ -1,0 +1,97 @@
+-- Reset LEDbar
+gpio.ws2812(string.char(0,0,0):rep(62))
+
+-- Implement Arrays for LED Lights Sections
+middle = {0, 1, 2, 3, 4, 5, 6, 7, 8, 33, 34, 35, 36, 37, 38}
+rightSide = {9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32}
+leftSide = {39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61}
+all = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61}
+
+-- Implement the Color Library, which saves for each LED light the color parameters for green, red, and blue
+ColLib= {}
+for i = 1, 62 do
+    table.insert(ColLib,{0,0,0})
+end
+
+-- Check connectivity
+if wifi.sta.getip() then
+    espid=wifi.sta.getip()
+    
+    -- light up first LED green as OK indicator
+    gpio.ws2812(string.char(20,0,0))
+    
+    -- A simple http server
+    srv=net.createServer(net.TCP)
+    srv:listen(80,function(conn)
+               
+               -- conn:on("sent",function(conn) conn:close() end)
+               conn:on("receive",function(conn,payload)
+                       
+                       -- Parse request
+                       local _, _, method, path, vars = string.find(payload, "([A-Z]+) (.+)?(.+) HTTP")
+                       if(method == nil)then
+                            _, _, method, path = string.find(payload, "([A-Z]+) (.+) HTTP");
+                       end
+                       
+                       -- Handle POST
+                       if method == "POST" then
+                            if payload == nil then
+                                print("debug: No payload")
+                            else
+                                body = payload:match("{.*}")
+                                g, r, b, s = body:match("%s*(%d+),%s*(%d+),%s*(%d+),%s*(%a+)")
+                       
+                                -- Update Color Library
+                                if s == "all" or s == nil then
+                                    for i = 1, 62 do
+                                        ColLib[i] = {g, r, b}
+                                    end
+                                elseif s == "middle" do
+                                    for i = 1, 15 do
+                                        ColLib[middle[i]] = {g, r, b}
+                                    end
+                                elseif s == "right" do
+                                    for i = 1, 23 do
+                                        ColLib[rightSide[i]] = {g, r, b}
+                                    end
+                                elseif s == "left" do
+                                    for i = 1, 24 do
+                                        ColLib[leftSide[i]] = {g, r, b}
+                                    end
+                                end
+                       
+                                -- Set new Colors
+                                gpio.ws2812(string.char(ColLib[i][1],ColLib[i][2],ColLib[i][3]):rep(62))
+                            end
+                            conn:close()
+                       
+                       -- Handle PUT
+                       elseif method == "PUT" then
+                            conn:close()
+                       
+                       -- Handle DELETE
+                       elseif method == "DELETE" then
+                            conn:close()
+                       
+                       -- Handle GET
+                       elseif method == "GET" then
+                            file.open("index.html", "r")
+                            body=file.read()
+                            conn:send(body)
+                            file.close()
+                            conn:close()
+                       
+                       -- Handle Unknown
+                       else
+                            conn:close()
+                       end
+            end)
+    end)
+else
+    print "debug: Init failed no ip adress"
+    print "debug: Check station mode and ap settings"
+
+    -- light up first LED red as Failure indicator
+    gpio.ws2812(string.char(0,100,0))
+end
+

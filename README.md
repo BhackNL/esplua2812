@@ -2,7 +2,7 @@
 simple and rough example controlling a ws2812 with http POST
 
 ## Changes
-Initial - Basic one color LED controll
+Initial - Basic one color LED control
 
 Create V2.0 - Peter's additions for controlling the BatLight in Bhack Space
               Copy into to autorun.lua if you want to use this.
